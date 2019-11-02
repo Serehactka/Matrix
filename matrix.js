@@ -1,6 +1,17 @@
+function copy(arr) {
+    const result = new Array(arr.length);
+    
+    for (let i = 0; i < arr.length; i++) {
+        result[i] = arr[i];
+    }
+
+    return result;
+}
+
 class Row extends Array {
     constructor(...args) {
-        super(...args);
+        super();
+        this.push(...args);
     }
 
     takeOut(row) {
@@ -26,7 +37,8 @@ class Row extends Array {
 
 class Column extends Array {
     constructor(...args) {
-        super(...args);
+        super();
+        this.push(...args);
     }
 
     takeOut(column) {
@@ -54,19 +66,20 @@ class Matrix {
     constructor(options) {
         this.rowsCount = options.rows;
         this.columnsCount = options.columns;
-        this.valuesCount = this.rowsCount * this.columnsCount;
 
-        this.rows = [];
-        this.columns = [];
-
-        this.__values = options.values || [];
-
-        this.__initRows();
-        this.__initColumns();
+        this.__values = options.values || this.__setEmptyValues();
     }
 
     getRow(n) {
-        return this.rows[n - 1] || null;
+        const row = [];
+        const values = this.values;
+        const offset = this.columnsCount * (n - 1);
+
+        for (let i = 0; i < this.columnsCount; i++) {
+            row.push(values[i + offset]);
+        }
+
+        return row;
     }
 
     setRow(n, row) {
@@ -78,7 +91,14 @@ class Matrix {
     }
 
     getColumn(n) {
-        return this.columns[n - 1] || null;
+        const column = [];
+        const values = this.values;
+
+        for (let i = 0; i < this.rowsCount; i++) {
+            column.push(values[i * this.columnsCount + n - 1]);
+        }
+        
+        return column;
     }
 
     setColumn(n, column) {
@@ -90,80 +110,157 @@ class Matrix {
     }
 
     multiplyOn(coef) {
-        const resultMatrix = new Matrix({
+        // for test
+        let values = [];
+        for (let i = 0; i < this.values.length; i++) {
+            values.push(this.values[i] * coef);
+        }
+
+        let resultMatrix = new Matrix({
             rows: this.rowsCount,
-            columns: this.rowsCount
+            columns: this.columnsCount,
+            values: values
         });
 
-        const values = this.values.map(i => i * coef);
-        resultMatrix.values = values;
+        // const values = this.values.map(i => i * coef);
+        // resultMatrix.values = values;
 
         return resultMatrix;
     }
 
-    __initRows() {
-        const rows = [];
-
-        for (let j = 0; j < this.rowsCount; j++) {
-            const values = [];
-            for (let i = 0; i < this.columnsCount; i++) {
-                let index = j * this.columnsCount + i;
-                const rowValue = this.__values[index] || 0;
-
-                values.push(rowValue);
-            }
-
-            const row = new Row(...values);
-            rows.push(row);
+    overwrite(f) {
+        // for test
+        let values = [];
+        for (let i = 0; i < this.values.length; i++) {
+            values.push(f(this.values[i]));
         }
 
-        this.rows = rows;
+        let resultMatrix = new Matrix({
+            rows: this.rowsCount,
+            columns: this.columnsCount,
+            values: values
+        });
+
+        return resultMatrix;
     }
 
-    __initColumns() {
-        const columns = [];
+    transpose() {
+        const resultMatrix = new Matrix({
+            rows: this.columnsCount,
+            columns: this.rowsCount,
+            values: this.transposeValues
+        });
 
-        for (let j = 0; j < this.columnsCount; j++) {
-            const values = [];
-            for (let i = 0; i < this.rowsCount; i++) {
-                let index = j + i * this.rowsCount;
-                const columnValue = this.__values[index] || 0;
+        return resultMatrix;
+    }
 
-                values.push(columnValue);
-            }
-
-            const column = new Column(...values);
-            columns.push(column);
+    __setEmptyValues() {
+        const empty = [];
+        for (let i = 0; i < this.rowsCount * this.columnsCount; i++) {
+            empty.push(0);
         }
 
-        this.columns = columns;
+        return empty;
     }
 
     set values(vals) {
-        this.__values = vals.slice();
-        this.__initRows();
-        this.__initColumns();
+        this.__values = vals;
+        // this.__initRows();
+        // this.__initColumns();
     }
 
     get values() {
-        return this.__values.slice();
+        return this.__values;
+    }
+
+    get averValue() {
+        return this.__values.reduce((acc, i) => acc + i, 0) / this.__values.length;
+    }
+
+    get transposeValues() {
+        let values = [];
+        for (let i = 0; i < this.columnsCount; i++) {
+            const column = this.getColumn(i + 1);
+
+            // for test
+            for (let j = 0; j < column.length; j++) {
+                values.push(column[j]);
+            }
+            // values.push(...column);
+        }
+
+        //const values = this.columns.reduce((acc ,c) => acc.concat(c), []);
+        return values;
+    }
+
+    static multiply(A, B) {
+        if (A.rowsCount != B.rowsCount || A.columnsCount != B.columnsCount) {
+            console.warn("Cannot multiply not matched matrixes");
+        }
+
+        const AValues = A.values;
+        const BValues = B.values;
+        const SValues = [];//AValues.map((v, i) => v * BValues[i]);
+
+        // for test
+        for (let i = 0; i < AValues.length; i++) {
+            SValues.push(AValues[i] * BValues[i]); 
+        }
+
+        const resultMatrix = new Matrix({
+            rows: A.rowsCount,
+            columns: A.columnsCount,
+            values: SValues
+        });
+
+        //resultMatrix.values = values;
+        return resultMatrix;
+    }
+
+    static divide(A, B) {
+        if (A.rowsCount != B.rowsCount || A.columnsCount != B.columnsCount) {
+            console.warn("Cannot divide not matched matrixes");
+        }
+
+        const AValues = A.values;
+        const BValues = B.values;
+        const SValues = [];//AValues.map((v, i) => v * BValues[i]);
+
+        // for test
+        for (let i = 0; i < AValues.length; i++) {
+            SValues.push(AValues[i] / BValues[i]); 
+        }
+
+        const resultMatrix = new Matrix({
+            rows: A.rowsCount,
+            columns: A.columnsCount,
+            values: SValues
+        });
+
+        //resultMatrix.values = values;
+        return resultMatrix;
     }
 
     static summ(A, B) {
         if (A.rowsCount != B.rowsCount || A.columnsCount != B.columnsCount) {
             console.warn("Cannot sum not matched matrixes");
+        }        
+
+        const AValues = A.values;
+        const BValues = B.values;
+        const SValues = []; //AValues.map((v, i) => v + BValues[i]);
+
+        for (let i = 0; i < AValues.length; i++) {
+            SValues.push(AValues[i] + BValues[i]); 
         }
 
         const resultMatrix = new Matrix({
             rows: A.rowsCount,
-            columns: A.rowsCount
+            columns: A.columnsCount,
+            values: SValues
         });
 
-        const AValues = A.values;
-        const BValues = B.values;
-        const SValues = AValues.map((v, i) => v + BValues[i]);
-
-        resultMatrix.values = SValues;
+        //resultMatrix.values = values;
         return resultMatrix;
     }
 
@@ -172,16 +269,21 @@ class Matrix {
             console.warn("Cannot take difference between not matched matrixes");
         }
 
-        const resultMatrix = new Matrix({
-            rows: A.rowsCount,
-            columns: A.rowsCount
-        });
-
         const AValues = A.values;
         const BValues = B.values;
-        const DValues = AValues.map((v, i) => v - BValues[i]);
+        const DValues = []; //AValues.map((v, i) => v - BValues[i]);
+        
+        for (let i = 0; i < AValues.length; i++) {
+            DValues.push(AValues[i] - BValues[i]); 
+        }
 
-        resultMatrix.values = DValues;
+        const resultMatrix = new Matrix({
+            rows: A.rowsCount,
+            columns: A.columnsCount,
+            values: DValues
+        });
+
+        //resultMatrix.values = values;
         return resultMatrix;
     }
 
@@ -190,23 +292,31 @@ class Matrix {
             console.warn("Cannot make multiplication between not matched matrixes");
         }
 
-        const resultMatrix = new Matrix({
-            rows: A.columnsCount,
-            columns: B.rowsCount
-        });
-
         const values = [];
 
-        for (let j = 1; j <= resultMatrix.rowsCount; j++) {
+        for (let j = 1; j <= A.rowsCount; j++) {
             const row = A.getRow(j);
-            for (let i = 1; i <= resultMatrix.columnsCount; i++) {
+
+            for (let i = 1; i <= B.columnsCount; i++) {
                 const column = B.getColumn(i);
-                const ag = row.aggregate(column);
-                values.push(ag);
+                //const ag = row.reduce((acc, v, i) => acc + v * column[i], 0);
+                
+                // for test
+                let reduceResult = 0;
+                for (let k = 0; k < row.length; k++) {
+                    reduceResult += row[k] * column[k];
+                }
+                values.push(reduceResult);
             }
         }
 
-        resultMatrix.values = values;
+        const resultMatrix = new Matrix({
+            rows: A.rowsCount,
+            columns: B.columnsCount,
+            values: values
+        });
+
+        //resultMatrix.values = values;
         return resultMatrix;
     }
 }
